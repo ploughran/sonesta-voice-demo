@@ -110,7 +110,40 @@
       display: flex; gap: 16px; align-items: flex-start;
       transition: background 0.2s;
     }
-    .af-moment-card:hover { background: rgba(255,255,255,0.09); }
+    .af-moment-card:not(.af-locked):hover { background: rgba(255,255,255,0.09); }
+
+    /* Locked state — dim and blurred */
+    .af-moment-card.af-locked {
+      opacity: 0.28;
+      filter: blur(0.5px);
+      pointer-events: none;
+      position: relative;
+    }
+    .af-lock-icon {
+      position: absolute; top: 14px; right: 16px;
+      font-size: 15px; opacity: 0.7;
+    }
+    .af-moment-card:not(.af-locked) .af-lock-icon { display: none; }
+
+    /* Reveal animation */
+    @keyframes momentReveal {
+      0%   { opacity: 0.28; filter: blur(0.5px); transform: translateY(6px) scale(0.98); }
+      60%  { opacity: 1;    filter: blur(0);     transform: translateY(-2px) scale(1.01); }
+      100% { opacity: 1;    filter: blur(0);     transform: translateY(0) scale(1); }
+    }
+    .af-moment-card.af-revealed {
+      animation: momentReveal 0.5s cubic-bezier(0.22,1,0.36,1) forwards;
+      border-color: rgba(222,218,111,0.4);
+      background: rgba(222,218,111,0.08);
+    }
+    /* Pulse on the number when revealed */
+    .af-moment-card.af-revealed .af-moment-num {
+      animation: numPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.15s both;
+    }
+    @keyframes numPop {
+      0%   { transform: scale(0.7); }
+      100% { transform: scale(1); }
+    }
     .af-moment-num {
       flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
       background: #deda6f; color: #1c1d18;
@@ -570,33 +603,37 @@
     <div class="af-section-head">Key moments in this conversation</div>
 
     <div class="af-moments">
-      <div class="af-moment-card">
+      <div class="af-moment-card af-locked" id="moment-1">
         <div class="af-moment-num">1</div>
         <div class="af-moment-body">
           <div class="af-moment-title">Instant Caller ID</div>
           <div class="af-moment-desc">Marcus's account, full billing history, and prior contact log surfaced in under 1 second — before he finishes saying his name.</div>
         </div>
+        <div class="af-lock-icon">🔒</div>
       </div>
-      <div class="af-moment-card">
+      <div class="af-moment-card af-locked" id="moment-2">
         <div class="af-moment-num">2</div>
         <div class="af-moment-body">
           <div class="af-moment-title">Proactive Context</div>
           <div class="af-moment-desc">The agent references 2 prior billing contacts and a credit that was applied — without Marcus having to explain his history from scratch.</div>
         </div>
+        <div class="af-lock-icon">🔒</div>
       </div>
-      <div class="af-moment-card">
+      <div class="af-moment-card af-locked" id="moment-3">
         <div class="af-moment-num">3</div>
         <div class="af-moment-body">
           <div class="af-moment-title">Live Contract Analysis</div>
           <div class="af-moment-desc">Identifies the seasonal treatment add-on clause in the renewed contract in real time, mid-call — no hold time, no manual lookup.</div>
         </div>
+        <div class="af-lock-icon">🔒</div>
       </div>
-      <div class="af-moment-card">
+      <div class="af-moment-card af-locked" id="moment-4">
         <div class="af-moment-num">4</div>
         <div class="af-moment-body">
           <div class="af-moment-title">Smart Escalation</div>
           <div class="af-moment-desc">3-year tenure + repeat billing contacts = churn risk signal. Agent routes directly to retention with full context pre-loaded — no re-explaining.</div>
         </div>
+        <div class="af-lock-icon">🔒</div>
       </div>
     </div>
 
@@ -1036,6 +1073,7 @@
     const row = appendMessage(line, sameAsPrev);
     const avatarEl = row.querySelector('.avatar');
     updateProgress();
+    checkMoments(idx);
 
     // Kick off TTS in parallel with the bubble appearing
     playLineAudio(idx, line, avatarEl);
@@ -1049,8 +1087,39 @@
     }
   }
 
+  // ── Reveal key moments as the conversation progresses ──
+  // Maps script line index → which moment card to unlock
+  const MOMENT_TRIGGERS = {
+    3:  'moment-1',   // "Got it, I have your account here." → Instant Caller ID
+    7:  'moment-2',   // "Hi Marcus, I see you contacted us recently..." → Proactive Context
+    10: 'moment-3',   // "I can see this is the seasonal treatment add-on..." → Live Contract Analysis
+    11: 'moment-4',   // "Given your 3-year tenure..." → Smart Escalation
+  };
+
+  function checkMoments(currentIdx) {
+    const momentId = MOMENT_TRIGGERS[currentIdx];
+    if (!momentId) return;
+    const card = document.getElementById(momentId);
+    if (!card) return;
+    // Small delay so the chat bubble lands first, then the card reveals
+    setTimeout(() => {
+      card.classList.remove('af-locked');
+      card.classList.add('af-revealed');
+    }, 400);
+  }
+
+  function resetMoments() {
+    Object.values(MOMENT_TRIGGERS).forEach(id => {
+      const card = document.getElementById(id);
+      if (!card) return;
+      card.classList.remove('af-revealed');
+      card.classList.add('af-locked');
+    });
+  }
+
   function restart() {
     stopAudio();
+    resetMoments();
     idx = -1;
     typingEl = null;
     thread.innerHTML = '';
