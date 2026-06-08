@@ -518,10 +518,11 @@
       <button class="save" onclick="saveSettings()">Save</button>
     </div>
     <div class="help">
-      The page uses pre-generated <code>audio/line-N.mp3</code> files when present (best for GitHub Pages — no key required).
-      If those files aren't there, it falls back to the live ElevenLabs API using the key above (stored in your browser only).
-      Defaults: Sarah / Brian. More voices in the
-      <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noopener">ElevenLabs library</a>.
+      <b>How voices work (in priority order):</b><br>
+      1. Pre-generated <code>audio/line-N.mp3</code> files (best quality)<br>
+      2. Live <a href="https://elevenlabs.io" target="_blank" rel="noopener">ElevenLabs</a> API — enter a key above<br>
+      3. <b>Browser built-in speech</b> — works automatically with no key or files (default)<br><br>
+      Voice IDs default to Sarah (agent) and Brian (customer).
     </div>
   </div>
 
@@ -737,10 +738,52 @@
     document.querySelectorAll('.avatar.speaking').forEach(el => el.classList.remove('speaking'));
   }
 
-  // Resolve an audio URL: prefer pre-generated audio/line-N.mp3, else live API.
-  async function resolveAudioURL(idx, line) {
+  // ── Web Speech API fallback ─────────────────────────────────────────
+  // Returns a Promise that resolves when speech ends.
+  // Picks two distinct voices from the browser: one for the agent, one for customer.
+  let _voiceCache = null;
+  function getBrowserVoices() {
+    if (_voiceCache) return _voiceCache;
+    const all = window.speechSynthesis.getVoices();
+    if (!all.length) return null;
+    // Prefer English voices; pick two that sound distinct
+    const en = all.filter(v => v.lang.startsWith('en'));
+    const pool = en.length >= 2 ? en : all;
+    // Agent: first female-sounding or first in list; Customer: second distinct voice
+    const agent    = pool.find(v => /female|zira|susan|samantha|karen|moira/i.test(v.name))
+                  || pool[0];
+    const customer = pool.find(v => v !== agent && /male|david|alex|daniel|george/i.test(v.name))
+                  || pool.find(v => v !== agent)
+                  || pool[0];
+    _voiceCache = { agent, customer };
+    return _voiceCache;
+  }
+
+  function speakWithBrowser(text, side, avatarEl) {
+    return new Promise((resolve) => {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      // Trigger voice list load (needed on some browsers)
+      const voices = getBrowserVoices();
+      if (voices) {
+        utt.voice = side === 'agent' ? voices.agent : voices.customer;
+      }
+      utt.rate  = side === 'agent' ? 0.95 : 1.0;
+      utt.pitch = side === 'agent' ? 1.05 : 0.90;
+      if (avatarEl) avatarEl.classList.add('speaking');
+      utt.onend = utt.onerror = () => {
+        if (avatarEl) avatarEl.classList.remove('speaking');
+        resolve();
+      };
+      window.speechSynthesis.speak(utt);
+    });
+  }
+
+  // Resolve an audio URL: prefer pre-generated audio/line-N.mp3, then live ElevenLabs API.
+  // Returns null if neither is available (browser TTS handled separately).
+  async function resolveAudioURL(lineIdx, line) {
     // Try pre-generated file
-    const localPath = `audio/line-${idx}.mp3`;
+    const localPath = `audio/line-${lineIdx}.mp3`;
     try {
       const head = await fetch(localPath, { method: 'HEAD' });
       if (head.ok) return { url: localPath, isBlob: false };
@@ -751,35 +794,46 @@
     return url ? { url, isBlob: true } : null;
   }
 
-  async function playLineAudio(idx, line, avatarEl) {
+  async function playLineAudio(lineIdx, line, avatarEl) {
     stopAudio();
     let resolved = null;
     try {
-      resolved = await resolveAudioURL(idx, line);
+      resolved = await resolveAudioURL(lineIdx, line);
     } catch (err) {
       console.error(err);
       toast(`Voice failed — ${err.message}`, 'warn', 4500);
-      return;
     }
-    if (!resolved) return;            // silent mode (no pre-gen, no key)
 
-    const audio = new Audio(resolved.url);
-    currentAudio = audio;
-    if (avatarEl) avatarEl.classList.add('speaking');
-    audio.addEventListener('ended', () => {
-      if (avatarEl) avatarEl.classList.remove('speaking');
-      if (resolved.isBlob) URL.revokeObjectURL(resolved.url);
-      if (currentAudio === audio) currentAudio = null;
-    });
-    audio.addEventListener('error', () => {
-      if (avatarEl) avatarEl.classList.remove('speaking');
-    });
-    try {
-      await audio.play();
-    } catch (err) {
-      if (avatarEl) avatarEl.classList.remove('speaking');
-      console.error(err);
+    if (resolved) {
+      // Play pre-generated file or ElevenLabs blob
+      const audio = new Audio(resolved.url);
+      currentAudio = audio;
+      if (avatarEl) avatarEl.classList.add('speaking');
+      audio.addEventListener('ended', () => {
+        if (avatarEl) avatarEl.classList.remove('speaking');
+        if (resolved.isBlob) URL.revokeObjectURL(resolved.url);
+        if (currentAudio === audio) currentAudio = null;
+      });
+      audio.addEventListener('error', () => {
+        if (avatarEl) avatarEl.classList.remove('speaking');
+      });
+      try { await audio.play(); } catch (err) {
+        if (avatarEl) avatarEl.classList.remove('speaking');
+        console.error(err);
+      }
+    } else if (window.speechSynthesis) {
+      // Browser TTS fallback — works on GitHub Pages with zero configuration
+      // Voices load asynchronously on some browsers; wait briefly if needed
+      if (!window.speechSynthesis.getVoices().length) {
+        await new Promise(r => {
+          const done = () => { _voiceCache = null; r(); };
+          window.speechSynthesis.addEventListener('voiceschanged', done, { once: true });
+          setTimeout(done, 800); // don't wait forever
+        });
+      }
+      await speakWithBrowser(line.t, line.s, avatarEl);
     }
+    // else: truly silent (speechSynthesis not available)
   }
 
   // ────────────────────────────────────────────
