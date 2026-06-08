@@ -528,18 +528,83 @@
 <body>
 
 <!-- ── PASSWORD GATE ── -->
-<div id="pw-gate" style="position:fixed;inset:0;z-index:9999;background:#1c1d18;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="background:#26271f;border:1px solid #3a3c33;border-radius:14px;padding:40px 48px;text-align:center;max-width:380px;width:90%;">
-    <div style="margin-bottom:20px;">
-      <img src="data:image/png;base64," alt="TrueNorth" style="height:44px;width:auto;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;"/>
-      <div style="font-size:20px;font-weight:800;color:#f8f8ea;letter-spacing:-0.3px;">Agentforce Voice Demo</div>
-      <div style="font-size:13px;color:#6f7164;margin-top:6px;">Enter the access password to continue</div>
-    </div>
-    <input id="pw-input" type="password" placeholder="Password"
-      style="width:100%;background:#1c1d18;border:1px solid #3a3c33;border-radius:8px;color:#f8f8ea;font-size:14px;padding:11px 14px;outline:none;margin-bottom:12px;font-family:inherit;"
-      onkeydown="if(event.key==='Enter')checkPw()"/>
-    <button onclick="checkPw()" style="width:100%;background:#1a6ec2;border:none;border-radius:8px;color:#ffffff;font-size:14px;font-weight:700;padding:11px;cursor:pointer;font-family:inherit;">Continue →</button>
-    <div id="pw-err" style="color:#c2553f;font-size:12px;margin-top:10px;min-height:16px;"></div>
+<style>
+  #pw-gate {
+    position:fixed; inset:0; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    /* Same gradient as the main background */
+    background: linear-gradient(135deg, #0a1628 0%, #0e2a6e 20%, #2d1b69 45%, #7b3fa0 65%, #c25a8a 82%, #e8a07a 100%);
+  }
+  #pw-card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 44px 48px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
+  }
+  #pw-logo { height:48px; width:auto; margin:0 auto 20px; display:block; }
+  #pw-title {
+    font-size:22px; font-weight:800; color:#ffffff;
+    letter-spacing:-0.4px; margin-bottom:4px; line-height:1.2;
+  }
+  #pw-sub {
+    font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:28px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  #pw-sub .pw-dot {
+    width:6px; height:6px; border-radius:50%;
+    background:#4da3ff; display:inline-block; flex-shrink:0;
+  }
+  #pw-input {
+    width:100%; background:rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.2);
+    border-radius:10px; color:#ffffff; font-size:15px;
+    padding:13px 16px; outline:none;
+    margin-bottom:12px; font-family:inherit;
+    transition: border-color .15s;
+    box-sizing:border-box;
+  }
+  #pw-input::placeholder { color:rgba(255,255,255,0.35); }
+  #pw-input:focus { border-color:rgba(77,163,255,0.7); }
+  #pw-btn {
+    width:100%; background:#1a6ec2;
+    border:none; border-radius:10px; color:#ffffff;
+    font-size:15px; font-weight:700; padding:13px;
+    cursor:pointer; font-family:inherit;
+    transition: background .15s, transform .1s;
+    letter-spacing:0.2px;
+  }
+  #pw-btn:hover { background:#1e7fd8; }
+  #pw-btn:active { transform:scale(0.98); }
+  #pw-err {
+    color:#ff8a8a; font-size:12px;
+    margin-top:10px; min-height:16px;
+  }
+  #pw-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(26,110,194,0.25); border:1px solid rgba(77,163,255,0.35);
+    border-radius:20px; padding:5px 14px;
+    font-size:11px; font-weight:700; color:#4da3ff;
+    text-transform:uppercase; letter-spacing:1.2px;
+    margin-bottom:18px;
+  }
+</style>
+<div id="pw-gate">
+  <div id="pw-card">
+    <img id="pw-logo" src="data:image/png;base64," alt="TrueNorth Services" />
+    <div id="pw-badge">⚡ Agentforce Voice Demo</div>
+    <div id="pw-title">Welcome Back</div>
+    <div id="pw-sub"><span class="pw-dot"></span>Enter your access password to continue</div>
+    <input id="pw-input" type="password" placeholder="Password" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')checkPw()" />
+    <button id="pw-btn" onclick="checkPw()">Continue →</button>
+    <div id="pw-err"></div>
   </div>
 </div>
 <script>
