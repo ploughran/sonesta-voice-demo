@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sonesta × Agentforce Voice Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: light;
+      --bg:           #f6f5f2;
+      --panel:        #ffffff;
+      --navy:         #0c1a3d;
+      --bubble-agent: #0c1a3d;
+      --bubble-cust:  #ececec;
+      --text-dark:    #1a1a1a;
+      --muted:        #8a8e96;
+      --border:       #e6e6e6;
+      --accent:       #0c1a3d;
+      --warn:         #c93a3a;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: transparent; /* wave bg sits behind */
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    /* ── Phone-like chat shell ── */
+    .shell {
+      width: 100%;
+      max-width: 560px;
+      height: 92vh;
+      max-height: 820px;
+      background: var(--panel);
+      border-radius: 22px;
+      box-shadow: 0 22px 60px rgba(12,26,61,0.12), 0 4px 14px rgba(12,26,61,0.06);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Header ── */
+    .head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel);
+    }
+    .brand-mark {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.5px;
+    }
+    .brand-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .brand-name { font-weight: 700; font-size: 15px; color: var(--text-dark); }
+    .brand-sub  {
+      font-size: 12px; color: #2da14a;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #2da14a;
+      animation: blink 1.6s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    .head-spacer { flex: 1; }
+    .clock {
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .gear-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.18s, color 0.18s;
+    }
+    .gear-btn:hover { background: #f2f2f2; color: var(--navy); }
+    .gear-btn.has-key { color: #2da14a; }
+
+    /* ── Settings drawer ── */
+    .drawer {
+      position: absolute;
+      top: 70px; right: 14px;
+      width: 320px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 12px 32px rgba(12,26,61,0.18);
+      padding: 16px 18px;
+      z-index: 10;
+      display: none;
+    }
+    .drawer.open { display: block; animation: drawerIn 0.18s ease both; }
+    @keyframes drawerIn {
+      from { opacity:0; transform: translateY(-6px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .drawer h4 {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--navy);
+      margin-bottom: 10px;
+    }
+    .drawer-row { margin-bottom: 12px; }
+    .drawer-row:last-of-type { margin-bottom: 6px; }
+    .drawer-row label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .drawer-row input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: -apple-system, system-ui, sans-serif;
+      color: var(--text-dark);
+      background: #fafafa;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .drawer-row input:focus {
+      outline: none;
+      border-color: var(--navy);
+      background: #fff;
+    }
+    .drawer-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .drawer-actions button {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .drawer-actions .clear { background: transparent; border-color: #d8d8d8; color: var(--muted); }
+    .drawer-actions .clear:hover { background: #f2f2f2; color: var(--text-dark); }
+    .drawer-actions .save  { background: var(--navy); color: #fff; }
+    .drawer-actions .save:hover { background: #142557; }
+    .help {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .help a { color: var(--navy); text-decoration: none; font-weight: 600; }
+    .help a:hover { text-decoration: underline; }
+
+    /* ── Toast ── */
+    .toast {
+      position: absolute;
+      bottom: 96px; left: 50%; transform: translateX(-50%);
+      background: var(--warn);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 22px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 20;
+      box-shadow: 0 6px 20px rgba(201,58,58,0.35);
+      animation: toastIn 0.2s ease both;
+      max-width: 80%;
+      text-align: center;
+    }
+    .toast.info { background: var(--navy); box-shadow: 0 6px 20px rgba(12,26,61,0.3); }
+    @keyframes toastIn {
+      from { opacity:0; transform: translate(-50%, 6px); }
+      to   { opacity:1; transform: translate(-50%, 0); }
+    }
+
+    /* ── Chat thread ── */
+    .thread {
+      flex: 1;
+      overflow-y: auto;
+      padding: 22px 18px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scroll-behavior: smooth;
+    }
+    .thread::-webkit-scrollbar { width: 5px; }
+    .thread::-webkit-scrollbar-thumb { background: #d3d3d3; border-radius: 3px; }
+
+    .row {
+      display: flex;
+      align-items: flex-end;
+      gap: 9px;
+      animation: msgIn 0.32s ease both;
+    }
+    @keyframes msgIn {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .agent-row    { flex-direction: row-reverse; }
+    .customer-row { flex-direction: row; }
+
+    .avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      transition: box-shadow 0.18s, transform 0.18s;
+      position: relative;
+    }
+    .agent-avatar    { background: var(--navy); }
+    .customer-avatar { background: #c8a97e; }
+
+    /* speaking pulse */
+    .avatar.speaking::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      animation: speakRing 1.2s ease-out infinite;
+      pointer-events: none;
+    }
+    .agent-avatar.speaking    { color: var(--navy); }
+    .customer-avatar.speaking { color: #c8a97e; }
+    .avatar.speaking { animation: speakBreath 1.2s ease-in-out infinite; }
+    @keyframes speakBreath {
+      0%,100% { transform: scale(1);    }
+      50%     { transform: scale(1.07); }
+    }
+    @keyframes speakRing {
+      0%   { transform: scale(0.95); opacity: 0.6; }
+      100% { transform: scale(1.6);  opacity: 0;   }
+    }
+
+    .bubble {
+      max-width: 78%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .agent-row .bubble {
+      background: var(--bubble-agent);
+      color: #fff;
+      border-bottom-right-radius: 6px;
+    }
+    .customer-row .bubble {
+      background: var(--bubble-cust);
+      color: var(--text-dark);
+      border-bottom-left-radius: 6px;
+    }
+
+    .row.continued .avatar { visibility: hidden; }
+    .row.continued        { margin-top: -6px; }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--muted);
+      margin: 2px 8px 8px;
+      animation: msgIn 0.32s ease both;
+    }
+    .meta.agent    { justify-content: flex-end; margin-right: 47px; }
+    .meta.customer { justify-content: flex-start; margin-left: 47px; }
+    .meta b { color: #4a4d54; font-weight: 600; }
+
+    .typing-bubble {
+      background: var(--bubble-agent);
+      padding: 14px 18px;
+      border-radius: 18px;
+      border-bottom-right-radius: 6px;
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .typing-bubble span {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      animation: typeBounce 1.2s ease-in-out infinite;
+    }
+    .typing-bubble span:nth-child(2) { animation-delay: 0.18s; }
+    .typing-bubble span:nth-child(3) { animation-delay: 0.36s; }
+    @keyframes typeBounce {
+      0%,80%,100% { transform: translateY(0);   opacity: 0.45; }
+      40%         { transform: translateY(-3px); opacity: 1;    }
+    }
+    .customer-row .typing-bubble {
+      background: var(--bubble-cust);
+      border-bottom-right-radius: 18px;
+      border-bottom-left-radius: 6px;
+    }
+    .customer-row .typing-bubble span { background: #888; }
+
+    /* ── Footer / controls ── */
+    .foot {
+      padding: 14px 18px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .progress {
+      flex: 1;
+      height: 4px;
+      background: #ececec;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.45s ease;
+    }
+    .step-label {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      min-width: 50px;
+      text-align: right;
+    }
+
+    .next-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 11px 24px;
+      border-radius: 22px;
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, opacity 0.2s ease;
+      box-shadow: 0 3px 10px rgba(12,26,61,0.18);
+      min-width: 92px;
+    }
+    .next-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: #142557;
+    }
+    .next-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .restart-btn {
+      background: transparent;
+      border: 1px solid #d6d6d6;
+      color: #4a4d54;
+      padding: 9px 14px;
+      border-radius: 22px;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .restart-btn:hover { background: #f0f0f0; border-color: #c0c0c0; }
+
+    @media (max-width: 480px) {
+      body { padding: 0; }
+      .shell {
+        width: 100%; height: 100vh; max-height: none;
+        border-radius: 0;
+      }
+      .drawer { width: calc(100% - 28px); right: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── PASSWORD GATE ── -->
+<div id="pw-gate" style="position:fixed;inset:0;z-index:9999;background:#1c1d18;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#26271f;border:1px solid #3a3c33;border-radius:14px;padding:40px 48px;text-align:center;max-width:380px;width:90%;">
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#deda6f;margin-bottom:6px;">SONESTA × SALESFORCE</div>
+      <div style="font-size:20px;font-weight:800;color:#f8f8ea;letter-spacing:-0.3px;">Agentforce Voice Demo</div>
+      <div style="font-size:13px;color:#6f7164;margin-top:6px;">Enter the access password to continue</div>
+    </div>
+    <input id="pw-input" type="password" placeholder="Password"
+      style="width:100%;background:#1c1d18;border:1px solid #3a3c33;border-radius:8px;color:#f8f8ea;font-size:14px;padding:11px 14px;outline:none;margin-bottom:12px;font-family:inherit;"
+      onkeydown="if(event.key==='Enter')checkPw()"/>
+    <button onclick="checkPw()" style="width:100%;background:#deda6f;border:none;border-radius:8px;color:#1c1d18;font-size:14px;font-weight:700;padding:11px;cursor:pointer;font-family:inherit;">Continue →</button>
+    <div id="pw-err" style="color:#c2553f;font-size:12px;margin-top:10px;min-height:16px;"></div>
+  </div>
+</div>
+<script>
+(function(){
+  const HASH='e9b038e456ee6e7df1edfcadf3193e76564b90b612e6ffcbc6b83511f045dae9';
+  const KEY='sonesta_voice_auth';
+  if(sessionStorage.getItem(KEY)===HASH) unlock();
+  async function checkPw(){
+    const val=document.getElementById('pw-input').value;
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(val));
+    const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    if(hex===HASH){sessionStorage.setItem(KEY,HASH);unlock();}
+    else{const e=document.getElementById('pw-err');e.textContent='Incorrect password.';document.getElementById('pw-input').value='';setTimeout(()=>e.textContent='',2500);}
+  }
+  function unlock(){const g=document.getElementById('pw-gate');if(g)g.remove();}
+  window.checkPw=checkPw;
+})();
+</script>
+
+<!-- ── SONESTA BACKGROUND ── -->
+<div id="sonesta-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:#f8f8ea;">
+  <!-- Citron wave pattern -->
+  <svg style="position:absolute;width:100%;height:100%;opacity:0.055;" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#c4bf4e" stroke-width="22" stroke-linecap="round">
+      <path d="M-40,80 q60,-30 60,44 q0,74 60,44"/><path d="M140,80 q60,-30 60,44 q0,74 60,44"/><path d="M320,80 q60,-30 60,44 q0,74 60,44"/><path d="M500,80 q60,-30 60,44 q0,74 60,44"/><path d="M680,80 q60,-30 60,44 q0,74 60,44"/>
+      <path d="M50,210 q60,-30 60,44 q0,74 60,44"/><path d="M230,210 q60,-30 60,44 q0,74 60,44"/><path d="M410,210 q60,-30 60,44 q0,74 60,44"/><path d="M590,210 q60,-30 60,44 q0,74 60,44"/>
+      <path d="M-40,340 q60,-30 60,44 q0,74 60,44"/><path d="M140,340 q60,-30 60,44 q0,74 60,44"/><path d="M320,340 q60,-30 60,44 q0,74 60,44"/><path d="M500,340 q60,-30 60,44 q0,74 60,44"/><path d="M680,340 q60,-30 60,44 q0,74 60,44"/>
+      <path d="M50,470 q60,-30 60,44 q0,74 60,44"/><path d="M230,470 q60,-30 60,44 q0,74 60,44"/><path d="M410,470 q60,-30 60,44 q0,74 60,44"/><path d="M590,470 q60,-30 60,44 q0,74 60,44"/>
+    </g>
+  </svg>
+  <!-- Sonesta wordmark watermark -->
+  <div style="position:absolute;bottom:28px;right:36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:#c4bf4e;opacity:0.35;">SONESTA × SALESFORCE</div>
+</div>
+
+<!-- ── AGENTFORCE MOMENTS CALLOUT ── -->
+<div id="af-callout" style="position:fixed;bottom:80px;right:20px;z-index:200;width:280px;background:#1c1d18;border:1px solid #3a3c33;border-radius:14px;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#deda6f;">Agentforce Voice</div>
+    <button onclick="document.getElementById('af-callout').style.display='none'" style="background:none;border:none;color:#6f7164;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+  </div>
+  <div style="font-size:11px;font-weight:700;color:#f8f8ea;margin-bottom:8px;">Key moments in this conversation:</div>
+  <div style="display:flex;flex-direction:column;gap:7px;">
+    <div class="af-moment" style="display:flex;gap:8px;align-items:flex-start;">
+      <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:#deda6f;color:#1c1d18;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;">1</span>
+      <span style="font-size:11px;color:rgba(248,248,234,0.78);line-height:1.5;"><strong style="color:#fff;">Instant caller ID</strong> — Marcus's account, billing history, and prior contacts surfaced in under 1 second</span>
+    </div>
+    <div class="af-moment" style="display:flex;gap:8px;align-items:flex-start;">
+      <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:#deda6f;color:#1c1d18;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;">2</span>
+      <span style="font-size:11px;color:rgba(248,248,234,0.78);line-height:1.5;"><strong style="color:#fff;">Proactive context</strong> — agent references 2 prior billing contacts and a prior credit without being asked</span>
+    </div>
+    <div class="af-moment" style="display:flex;gap:8px;align-items:flex-start;">
+      <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:#deda6f;color:#1c1d18;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;">3</span>
+      <span style="font-size:11px;color:rgba(248,248,234,0.78);line-height:1.5;"><strong style="color:#fff;">Live contract analysis</strong> — identifies the seasonal add-on clause in real time during the call</span>
+    </div>
+    <div class="af-moment" style="display:flex;gap:8px;align-items:flex-start;">
+      <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:#deda6f;color:#1c1d18;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;">4</span>
+      <span style="font-size:11px;color:rgba(248,248,234,0.78);line-height:1.5;"><strong style="color:#fff;">Smart escalation</strong> — 3-year tenure + repeat contact signals churn risk; routes to retention with full context</span>
+    </div>
+  </div>
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid #3a3c33;font-size:10px;color:#6f7164;line-height:1.5;">
+    Powered by <strong style="color:#deda6f;">Agentforce Voice</strong> · Sonesta Contact Center
+  </div>
+</div>
+
+<div class="shell" style="position:relative;z-index:1;">
+
+  <!-- HEADER -->
+  <div class="head">
+    <div class="brand-mark">TN</div>
+    <div class="brand-info">
+      <div class="brand-name">TrueNorth Support</div>
+      <div class="brand-sub">
+        <span class="live-dot"></span> Active call · with Marcus Landry
+      </div>
+    </div>
+    <div class="head-spacer"></div>
+    <div class="clock" id="clock">10:19 AM</div>
+    <button class="gear-btn" id="gearBtn" title="Voice settings" onclick="toggleDrawer()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.14.34.22.7.22 1.07A1.65 1.65 0 0021 11h.09a2 2 0 110 4H21a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- SETTINGS DRAWER -->
+  <div class="drawer" id="drawer">
+    <h4>Voice settings (ElevenLabs)</h4>
+    <div class="drawer-row">
+      <label for="apiKey">API key</label>
+      <input type="password" id="apiKey" placeholder="sk_…" autocomplete="off" />
+    </div>
+    <div class="drawer-row">
+      <label for="agentVoice">Agent voice ID (TrueNorth)</label>
+      <input type="text" id="agentVoice" placeholder="EXAVITQu4vr4xnSDxMaL" />
+    </div>
+    <div class="drawer-row">
+      <label for="custVoice">Customer voice ID (Marcus)</label>
+      <input type="text" id="custVoice" placeholder="nPczCjzI2devNBz1zQrb" />
+    </div>
+    <div class="drawer-actions">
+      <button class="clear" onclick="clearSettings()">Clear</button>
+      <button class="save" onclick="saveSettings()">Save</button>
+    </div>
+    <div class="help">
+      The page uses pre-generated <code>audio/line-N.mp3</code> files when present (best for GitHub Pages — no key required).
+      If those files aren't there, it falls back to the live ElevenLabs API using the key above (stored in your browser only).
+      Defaults: Sarah / Brian. More voices in the
+      <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noopener">ElevenLabs library</a>.
+    </div>
+  </div>
+
+  <!-- THREAD -->
+  <div class="thread" id="thread">
+    <div class="meta customer" id="kickoff" style="justify-content:center;text-align:center;width:100%;margin:auto 0;">
+      Press <b style="margin:0 4px;">Start</b> to play the conversation.
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <button class="restart-btn" onclick="restart()" title="Restart">↺</button>
+    <div class="progress"><div class="progress-fill" id="progFill"></div></div>
+    <div class="step-label" id="stepLabel">0 / 0</div>
+    <button class="next-btn" id="nextBtn" onclick="advance()">Start</button>
+  </div>
+
+</div>
+
+<!-- ── SVG avatar templates ── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="avatarAgent" viewBox="0 0 30 30">
+    <rect width="30" height="30" fill="#0c1a3d"/>
+    <circle cx="15" cy="12" r="4.5" fill="#fff"/>
+    <path d="M5 27c0-4.4 4.5-7.5 10-7.5s10 3.1 10 7.5" fill="#fff"/>
+    <circle cx="15" cy="3.5" r="1.2" fill="#e8b84b"/>
+  </symbol>
+  <symbol id="avatarCustomer" viewBox="0 0 30 30">
+    <rect width="30" height="30" fill="#c8a97e"/>
+    <path d="M6 13c0-5 4-9 9-9s9 4 9 9v2H6v-2z" fill="#3b2a1b"/>
+    <circle cx="15" cy="14" r="6.2" fill="#e8c39c"/>
+    <circle cx="12.5" cy="13.5" r="1.8" fill="none" stroke="#1a1a1a" stroke-width="0.7"/>
+    <circle cx="17.5" cy="13.5" r="1.8" fill="none" stroke="#1a1a1a" stroke-width="0.7"/>
+    <line x1="14.3" y1="13.5" x2="15.7" y2="13.5" stroke="#1a1a1a" stroke-width="0.7"/>
+    <path d="M10 17c0 3 2.5 5 5 5s5-2 5-5" fill="#3b2a1b"/>
+    <path d="M5 30c0-4.4 4.5-7 10-7s10 2.6 10 7" fill="#5a6f7a"/>
+  </symbol>
+</svg>
+
+<script>
+  // ────────────────────────────────────────────
+  //  CONFIG
+  // ────────────────────────────────────────────
+  const DEFAULT_AGENT_VOICE = 'EXAVITQu4vr4xnSDxMaL'; // Sarah
+  const DEFAULT_CUST_VOICE  = 'nPczCjzI2devNBz1zQrb'; // Brian
+  const TTS_MODEL           = 'eleven_turbo_v2_5';
+  const STORAGE_KEY         = 'truenorth-elevenlabs-cfg-v1';
+
+  // ────────────────────────────────────────────
+  //  SCRIPT
+  // ────────────────────────────────────────────
+  const SCRIPT = [
+    { s:'agent',    t:"Hi, you've reached TrueNorth Services. I'm your virtual assistant. Could I have your name to get started?",
+      time:'10:19 AM' },
+    { s:'customer', t:"Hi, this is Marcus Landry.",
+      time:'10:19 AM' },
+    { s:'agent',    t:"Thanks, Marcus — one moment while I pull up your account.",
+      time:'10:20 AM' },
+    { s:'agent',    t:"Got it, I have your account here.",
+      time:'10:20 AM' },
+    { s:'agent',    t:"Thank you for calling. For your security, can you please confirm the last 4 digits of the billing card on file?",
+      time:'10:21 AM' },
+    { s:'customer', t:"Sure, it's 4892.",
+      time:'10:21 AM' },
+    { s:'agent',    t:"Absolutely, Marcus. Are you calling about your most recent order?",
+      time:'10:22 AM' },
+    { s:'agent',    t:"Hi Marcus, I see you contacted us recently about a billing question and we applied a credit. Are you calling about something related to that, or a new issue?",
+      time:'10:22 AM' },
+    { s:'customer', t:"Actually, yes. I appreciate the credit, but I want to talk about that quarterly upcharge. I want it permanently removed from my contract going forward..",
+      time:'10:23 AM' },
+    { s:'agent',    t:"I understand completely. Let me review your contract terms and the specific add-on in question…",
+      time:'10:24 AM' },
+    { s:'agent',    t:"I can see this is the seasonal treatment add-on included in your renewed contract. You're asking for a permanent removal, which would require a contract modification.",
+      time:'10:24 AM' },
+    { s:'agent',    t:"Given your 3-year tenure with us and that you've contacted us twice about billing in the past few months, I'm going to connect you directly with our customer retention team. They have the authority to modify your contract and can work out the best solution for you.",
+      time:'10:25 AM' },
+    { s:'customer', t:"Oh that sounds great, thanks!",
+      time:'10:25 AM' },
+    { s:'agent',    t:"One moment please.",
+      time:'10:25 AM' },
+  ];
+
+  // ────────────────────────────────────────────
+  //  STATE
+  // ────────────────────────────────────────────
+  let idx = -1;
+  let typingEl = null;
+  let currentAudio = null;
+  let cfg = loadConfig();
+
+  // DOM refs
+  const thread    = document.getElementById('thread');
+  const nextBtn   = document.getElementById('nextBtn');
+  const progFill  = document.getElementById('progFill');
+  const stepLabel = document.getElementById('stepLabel');
+  const clock     = document.getElementById('clock');
+  const kickoff   = document.getElementById('kickoff');
+  const drawer    = document.getElementById('drawer');
+  const gearBtn   = document.getElementById('gearBtn');
+  const apiKeyEl  = document.getElementById('apiKey');
+  const agentVEl  = document.getElementById('agentVoice');
+  const custVEl   = document.getElementById('custVoice');
+
+  stepLabel.textContent = `0 / ${SCRIPT.length}`;
+  applyConfigToDrawer();
+  refreshGearStatus();
+
+  // ────────────────────────────────────────────
+  //  CONFIG (localStorage) — wrapped in try/catch
+  //  for environments where storage isn't available
+  // ────────────────────────────────────────────
+  function loadConfig() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return { apiKey:'', agentVoice:'', custVoice:'' };
+  }
+  function persistConfig() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch(e) {}
+  }
+  function applyConfigToDrawer() {
+    apiKeyEl.value = cfg.apiKey   || '';
+    agentVEl.value = cfg.agentVoice || '';
+    custVEl.value  = cfg.custVoice  || '';
+  }
+  function refreshGearStatus() {
+    if (cfg.apiKey) gearBtn.classList.add('has-key');
+    else            gearBtn.classList.remove('has-key');
+  }
+  function toggleDrawer() {
+    drawer.classList.toggle('open');
+  }
+  function saveSettings() {
+    cfg = {
+      apiKey:     apiKeyEl.value.trim(),
+      agentVoice: agentVEl.value.trim(),
+      custVoice:  custVEl.value.trim(),
+    };
+    persistConfig();
+    refreshGearStatus();
+    drawer.classList.remove('open');
+    toast(cfg.apiKey ? 'Voice settings saved.' : 'Voice cleared — playing silently.', 'info');
+  }
+  function clearSettings() {
+    cfg = { apiKey:'', agentVoice:'', custVoice:'' };
+    persistConfig();
+    applyConfigToDrawer();
+    refreshGearStatus();
+    toast('Settings cleared.', 'info');
+  }
+
+  // close drawer on outside click
+  document.addEventListener('click', (e) => {
+    if (!drawer.classList.contains('open')) return;
+    if (drawer.contains(e.target) || gearBtn.contains(e.target)) return;
+    drawer.classList.remove('open');
+  });
+
+  // ────────────────────────────────────────────
+  //  TOAST
+  // ────────────────────────────────────────────
+  function toast(msg, kind='warn', ms=3500) {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const t = document.createElement('div');
+    t.className = `toast ${kind}`;
+    t.textContent = msg;
+    document.querySelector('.shell').appendChild(t);
+    setTimeout(() => t.remove(), ms);
+  }
+
+  // ────────────────────────────────────────────
+  //  TTS — calls ElevenLabs directly
+  // ────────────────────────────────────────────
+  async function fetchTTS(text, voiceId) {
+    if (!cfg.apiKey) return null;
+    const vid = voiceId || (cfg.agentVoice || DEFAULT_AGENT_VOICE);
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': cfg.apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text,
+        model_id: TTS_MODEL,
+        voice_settings: { stability: 0.45, similarity_boost: 0.75 },
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      throw new Error(`ElevenLabs ${res.status}: ${err.slice(0,160)}`);
+    }
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
+
+  function voiceIdFor(side) {
+    if (side === 'agent') return cfg.agentVoice || DEFAULT_AGENT_VOICE;
+    return                       cfg.custVoice  || DEFAULT_CUST_VOICE;
+  }
+
+  function stopAudio() {
+    if (currentAudio) {
+      try {
+        currentAudio.pause();
+        currentAudio.src = '';
+      } catch(e) {}
+      currentAudio = null;
+    }
+    document.querySelectorAll('.avatar.speaking').forEach(el => el.classList.remove('speaking'));
+  }
+
+  // Resolve an audio URL: prefer pre-generated audio/line-N.mp3, else live API.
+  async function resolveAudioURL(idx, line) {
+    // Try pre-generated file
+    const localPath = `audio/line-${idx}.mp3`;
+    try {
+      const head = await fetch(localPath, { method: 'HEAD' });
+      if (head.ok) return { url: localPath, isBlob: false };
+    } catch (e) { /* not present */ }
+    // Fall back to live API if a key is configured
+    if (!cfg.apiKey) return null;
+    const url = await fetchTTS(line.t, voiceIdFor(line.s));
+    return url ? { url, isBlob: true } : null;
+  }
+
+  async function playLineAudio(idx, line, avatarEl) {
+    stopAudio();
+    let resolved = null;
+    try {
+      resolved = await resolveAudioURL(idx, line);
+    } catch (err) {
+      console.error(err);
+      toast(`Voice failed — ${err.message}`, 'warn', 4500);
+      return;
+    }
+    if (!resolved) return;            // silent mode (no pre-gen, no key)
+
+    const audio = new Audio(resolved.url);
+    currentAudio = audio;
+    if (avatarEl) avatarEl.classList.add('speaking');
+    audio.addEventListener('ended', () => {
+      if (avatarEl) avatarEl.classList.remove('speaking');
+      if (resolved.isBlob) URL.revokeObjectURL(resolved.url);
+      if (currentAudio === audio) currentAudio = null;
+    });
+    audio.addEventListener('error', () => {
+      if (avatarEl) avatarEl.classList.remove('speaking');
+    });
+    try {
+      await audio.play();
+    } catch (err) {
+      if (avatarEl) avatarEl.classList.remove('speaking');
+      console.error(err);
+    }
+  }
+
+  // ────────────────────────────────────────────
+  //  RENDER
+  // ────────────────────────────────────────────
+  function avatarHTML(side) {
+    const sym = side === 'agent' ? '#avatarAgent' : '#avatarCustomer';
+    const cls = side === 'agent' ? 'agent-avatar' : 'customer-avatar';
+    return `<div class="avatar ${cls}"><svg width="30" height="30"><use href="${sym}"/></svg></div>`;
+  }
+
+  function appendTypingFor(line) {
+    const sideClass = line.s === 'agent' ? 'agent-row' : 'customer-row';
+    const row = document.createElement('div');
+    row.className = `row ${sideClass}`;
+    row.innerHTML = `${avatarHTML(line.s)}<div class="typing-bubble"><span></span><span></span><span></span></div>`;
+    thread.appendChild(row);
+    thread.scrollTop = thread.scrollHeight;
+    return row;
+  }
+
+  function appendMessage(line, prevSameSide) {
+    const sideClass = line.s === 'agent' ? 'agent-row' : 'customer-row';
+    const row = document.createElement('div');
+    row.className = `row ${sideClass}${prevSameSide ? ' continued' : ''}`;
+    row.innerHTML = `${avatarHTML(line.s)}<div class="bubble">${escapeHTML(line.t)}</div>`;
+    thread.appendChild(row);
+
+    const meta = document.createElement('div');
+    meta.className = `meta ${line.s}`;
+    const name = line.s === 'agent' ? 'TrueNorth' : 'Marcus Landry';
+    meta.innerHTML = `<b>${name}</b> · ${line.time}`;
+    thread.appendChild(meta);
+
+    thread.scrollTop = thread.scrollHeight;
+    return row;
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function updateProgress() {
+    const done = idx + 1;
+    progFill.style.width = ((done / SCRIPT.length) * 100) + '%';
+    stepLabel.textContent = `${done} / ${SCRIPT.length}`;
+    if (done > 0) clock.textContent = SCRIPT[idx].time;
+  }
+
+  // ────────────────────────────────────────────
+  //  ADVANCE / RESTART
+  // ────────────────────────────────────────────
+  function advance() {
+    if (idx >= SCRIPT.length - 1) return;
+
+    if (idx === -1 && kickoff && kickoff.parentNode) kickoff.remove();
+    if (typingEl) { typingEl.remove(); typingEl = null; }
+
+    idx++;
+    const line = SCRIPT[idx];
+    const prev = idx > 0 ? SCRIPT[idx - 1] : null;
+    const sameAsPrev = prev && prev.s === line.s;
+
+    const row = appendMessage(line, sameAsPrev);
+    const avatarEl = row.querySelector('.avatar');
+    updateProgress();
+
+    // Kick off TTS in parallel with the bubble appearing
+    playLineAudio(idx, line, avatarEl);
+
+    if (idx === SCRIPT.length - 1) {
+      nextBtn.disabled = true;
+      nextBtn.textContent = 'End of call';
+    } else {
+      nextBtn.textContent = 'Next →';
+      typingEl = appendTypingFor(SCRIPT[idx + 1]);
+    }
+  }
+
+  function restart() {
+    stopAudio();
+    idx = -1;
+    typingEl = null;
+    thread.innerHTML = '';
+    const ko = document.createElement('div');
+    ko.className = 'meta customer';
+    ko.style.cssText = 'justify-content:center;text-align:center;width:100%;margin:auto 0;';
+    ko.innerHTML = `Press <b style="margin:0 4px;">Start</b> to play the conversation.`;
+    ko.id = 'kickoff';
+    thread.appendChild(ko);
+
+    nextBtn.disabled = false;
+    nextBtn.textContent = 'Start';
+    progFill.style.width = '0%';
+    stepLabel.textContent = `0 / ${SCRIPT.length}`;
+    clock.textContent = '10:19 AM';
+  }
+</script>
+
+</body>
+</html>
